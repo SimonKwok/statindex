@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf8" />
+<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+<style type="text/css">
+body {
+	margin: 0;
+	border: 0;
+	overflow: hidden;
+}
+
+#map_canvas {
+	width: 100%;
+	height: 100%;
+	position: absolute;
+}
+</style>
+<script type="text/javascript" src="http://api.map.baidu.com/api?v=2.0&ak=4b8be80533f12fa2aa98cc20caa01c2e"></script>
+<script type="text/javascript" src="./js/citydata.json"></script>
+</head>
+<body>
+<div id="map_canvas"></div>
+</body>
+</html>
+<script type="text/javascript">
+var provinces = [ "广西-#C8C1E3", "广东-#FBC5DC", "湖南-#DBEDC7", "贵州-#E7CCAF", "云南-#DBEDC7", "福建-#FEFCBF", "江西-#E7CCAF", "浙江-#C8C1E3", "安徽-#FBC5DC", "湖北-#C8C1E3", "河南-#DBECC8", "江苏-#DBECC8", "四川-#FCFBBB", "海南省-#FCFBBB", "山东-#FCFBBB", "辽宁-#FCFBBB", "新疆-#FCFBBB", "西藏-#E7CCAF", "陕西-#E7CCAF", "河北-#E7CCAF", "黑龙江-#E7CCAF", "宁夏-#FBC5DC", "内蒙古自治区-#DBEDC7", "青海-#DBEDC7", "甘肃-#C8C1E3", "山西-#FBC5DC", "吉林省-#C8C1E3", "北京-#FBC5DC", "天津-#C8C1E3", "上海-#FCFBBB", "重庆市-#FBC5DC", "香港-#C8C1E3", "澳门-#C8C1E3", "台湾-#C8C1E3" ];
+var map = new BMap.Map("map_canvas");
+map.centerAndZoom(new BMap.Point(117.269945,31.86713), 14);
+map.addControl(new BMap.MapTypeControl({
+    mapTypes:[BMAP_NORMAL_MAP, BMAP_SATELLITE_MAP, BMAP_HYBRID_MAP]
+}));
+map.addControl(new BMap.NavigationControl());
+map.enableScrollWheelZoom();
+map.enableContinuousZoom();
+
+var myGeo = new BMap.Geocoder();
+
+function geocodeSearch(add){
+    myGeo.getPoint(add, function(point){
+      if (point) {
+        document.getElementById("result").innerHTML +=  index + " " + add + ":" + point.lng + "," + point.lat + "</br>";
+        console.log(index + " " + add + ":" + point.lng + "," + point.lat);
+      }
+    }, "xx");
+}
+function getBoundary(province) {
+    var boundary = new BMap.Boundary();
+    var arr = province.split("-");
+    boundary.get(arr[0], function(rs){ 
+     //一个省可能有好几个闭合的多边形区域
+     for (var i = 0; i < rs.boundaries.length; i++) {
+    	 var polygon = new BMap.Polygon(rs.boundaries[i], {strokeWeight: 2, strokeColor: arr[1]}); //建立多边形覆盖物
+         map.addOverlay(polygon);  //添加覆盖物
+         //map.setViewport(ply.getPath());    //调整视野
+       //开始用"mouseover","mouseout"发现,鼠标移动过快,会多个省份也高亮了.所以改成 click了
+         polygon.addEventListener("click", function (e) {
+             var latlng = e.point;
+             var info = new BMap.InfoWindow(name + " " + latlng.lat + "," + latlng.lng, {width:220});
+             map.openInfoWindow(info, latlng);
+
+             //高亮闪烁显示鼠标点击的省
+             delay = 0;
+             for (flashTimes = 0; flashTimes < 3; flashTimes++) {
+                 delay += 200;
+                 setTimeout(function () {
+                     polygon.setFillColor("#FFFF00");
+                 }, delay);
+
+                 delay += 200;
+                 setTimeout(function () {
+                     polygon.setFillColor(color);
+                 }, delay);
+             }
+         });
+     }
+    });  
+}
+
+//逐个显示
+for (var i = provinces.length - 1; i >= 0; i--) {
+    getBoundary(provinces[i]);
+}
+</script>

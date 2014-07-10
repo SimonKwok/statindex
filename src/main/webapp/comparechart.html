@@ -1,0 +1,215 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./css/chart.css" />
+<link rel="stylesheet" type="text/css" href="./css/themes/cupertino/jquery-ui.min.css"/>
+<script type="text/javascript" src="./js/utilities.js"></script>
+<script type="text/javascript" src="./js/chart.js"></script>
+<script type="text/javascript" src="./js/jquery-1.7.2.js"></script>
+<script type="text/javascript" src="./js/city_data.js"></script>
+<script type="text/javascript" src="./jchartfx.7.1.5044/js/jchartfx.system.js"></script>
+<script type="text/javascript" src="./jchartfx.7.1.5044/js/jchartfx.coreVector.js"></script>   
+<script type="text/javascript" src="./jchartfx.7.1.5044/js/jchartfx.coreVector3d.js"></script>	
+<script type="text/javascript" src="./jchartfx.7.1.5044/js/jchartfx.advanced.js"></script>	
+<title>对比图</title>
+<script type="text/javascript">
+var cities = decodeURI(QueryString.ns).split(",");
+var city = decodeURI(QueryString.n);
+var index = indexes[QueryString.i];
+var phase = QueryString.p;
+
+var tmpCityNames;
+
+var indexname = index["NAME"];
+var unit = index["UNIT"];
+var title = phasename(index,phase) + indexname +"对比图";
+var chart1;
+function init() {
+	if(city!='undefined'){
+		createLevelSelect();
+		$("#numSelect").change(refreshPage);
+		refreshPage();
+	}else{
+		$(".settingsui").css('display','none');
+		rebuildTitle();
+		rebuildChart();
+	}
+}
+
+function createLevelSelect(){
+	for (i = 0, n = cityLevels.length; i < n; i++) {
+    	var lv = cityLevels[i];
+    	var div = document.createElement('div');
+    	div.style.display = "inline-block";
+    	var input = document.createElement('input');
+    	input.id = "input-"+i;
+    	input.name = "citylevel";
+    	input.type = "radio";
+    	input.value = i;
+    	input.title = lv;
+    	if(getByProp(cityDatas,"NAME",city).LV == lv)input.checked = "checked";
+    	var label = document.createElement('label');
+    	label.innerHTML = lv;
+    	label.htmlFor  = input.id;
+    	label.style.padding = "5px";
+    	
+    	div.appendChild(input);
+    	div.appendChild(label);
+    	document.getElementById("levelSelect").appendChild(div);
+    }
+	$('#levelSelect').on('change', 'input[type=radio]', refreshPage);
+}
+
+function refreshPage(){
+	collectSelectedLevels();
+	rebuildTitle();
+	rebuildChart();
+}
+
+function collectSelectedLevels(){
+	var lvs = [];
+	$("#levelSelect").find("input[type=radio]").each(function(i, e) {
+        var $that = $(this);
+        if ($that.attr("checked")) {
+        	var lv = cityLevels[$that.val()];
+        	lvs.push(lv);
+        }
+    });
+	cities = getSameLevelCitiesByNumber(city,phasecode(index,phase),lvs,parseInt($("#numSelect").val()))||cities;
+}
+
+function rebuildTitle(){
+	document.title = title + " - " + cities;
+}
+function rebuildChart(){
+	document.getElementById('chartContainer').innerHTML = "<div id='ChartDiv1'></div>";
+	chart1 = new cfx.Chart();
+    chart1.setGallery(cfx.Gallery.Bar);
+    chart1.getAllSeries().setBarShape(cfx.BarShape.Cylinder);
+    chart1.getView3D().setEnabled(true);
+    chart1.getView3D().setCluster(true);
+    chart1.getLegendBox().setVisible(false);
+    //chart1.getDataGrid().setVisible(true);
+    doTitle(chart1,title);
+    chart1.setDataSource(createDataSource());
+    settingAxis(chart1.getAxisY(),unit);
+    chart1.create(document.getElementById('ChartDiv1'));
+    chart1.on("gettip", onGetTipDiv);
+}
+
+
+//根据城市名称获取同级城市名称:相邻diff个
+function getSameLevelCitiesByNumber(city,indexcode,lvs,diff){
+	sortCityDataByIndex(indexcode, 1);
+	tmpCityNames = [];
+	for (i = 0, n = cityDatas.length; i < n; i++) {
+		var v = cityDatas[i][indexcode];
+		if(cityDatas[i].NAME==city||lvs.indexOf(cityDatas[i]["LV"])>-1){
+			tmpCityNames.push(cityDatas[i].NAME);
+		}
+	}
+	var idx = tmpCityNames.indexOf(city);
+	var min = Math.max(idx-Math.floor(diff/2),0);
+	var max = min+diff;
+	var cities = [];
+	for (i = min; i < max && i<tmpCityNames.length; i++) {
+		cities.push(tmpCityNames[i]);
+	}
+	return cities;
+}
+
+function createDataSource(){
+	var items = new Array();
+	for (i = 0, n = cities.length; i < n; i++) {
+		var city = cities[i];
+		var item = new Object();
+		var data = getByProp(cityDatas,"NAME",city);
+		item[indexname] = getDataValue(data,index,phase) || 0;
+		if(unit=='%'){
+			item[indexname] = item[indexname] / 100.0;
+		}
+		item["地区"] = tmpCityNames?(city+"("+(tmpCityNames.indexOf(city)+1)+")"):city;
+		items.push(item);
+	}
+	return items;
+}
+function createDetailDataSource(city){
+	if(index.elements && index.elements.length>1){
+		var items=[], val=0, data=getByProp(cityDatas,"NAME",city);
+		for(j=0;j<index.elements.length;j++){
+			var ec = index.elements[j];
+			var ei = indexConfig[ec];
+			var item = new Object();
+			item["NAME"] = ei.NAME;
+			item[indexname] = getDataValue(data,ei,phase) || 0;
+			items.push(item);
+			val += item[indexname];
+		}
+		if(val==0)return null;
+		return items;
+	}
+	return null;
+}
+
+function createDetailTitle(city){
+	return city + indexname + ":" + getDataValue(getByProp(cityDatas,"NAME",city),index,phase) + unit;
+}
+
+function onGetTipDiv(args) {
+	var point = args.getPoint();
+	if(point<0)return;
+	var detailDataSource = createDetailDataSource(cities[point]);
+	if(!!detailDataSource){
+	    if (args.getHitType() == cfx.HitType.Point) {
+	    	args.tooltipDiv.innerHTML = "";
+	    	var detailsChartDiv = document.createElement("div");
+	    	detailsChartDiv.id = "detailsChart";
+	        var divInTooltip = document.createElement("div");
+	        divInTooltip.id = "tipChartInfo";
+	        divInTooltip.className = "tooltipPop";
+			divInTooltip.style.visibility = "hidden";
+		    divInTooltip.style.display = "block";
+	        divInTooltip.appendChild(detailsChartDiv);
+	        document.body.appendChild(divInTooltip);
+	        
+	        chartDetails = new cfx.Chart();
+	        chartDetails.setGallery(cfx.Gallery.Pie);
+	        pieChart(chartDetails);
+	        chartDetails.setDataSource(detailDataSource);
+	        chartDetailsTitle = doTitle(chartDetails,createDetailTitle(cities[point]));
+	        chartDetails.create(detailsChartDiv);
+	        divInTooltip.style.visibility = "inherit";
+	        args.tooltipDiv.appendChild(divInTooltip);
+	        args.replaceDiv = false;
+	        return ;
+	    }
+	}
+	args.tooltipDiv.innerHTML = "";
+	args.replaceDiv = true;
+}
+
+</script>
+</head>
+<body onload="init()">
+	<div id="chartContainer">
+		<div id="ChartDiv1"></div>
+	</div>
+	<div class="settingsui">
+		<ul>
+			<li>
+				<form id="levelSelect"><label>对比省市类别:</label></form>
+			</li>
+			<li><label>对比数量: <select id="numSelect">
+						<option >5</option>
+						<option selected>10</option>
+						<option >20</option>
+						<option >30</option>
+						<option >50</option>
+						<option >100</option>
+				</select>
+			</label></li>
+		</ul>
+	</div>
+</body>
+</html>

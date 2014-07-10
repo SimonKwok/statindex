@@ -1,0 +1,50 @@
+*{
+	margin: 0px;
+	padding:0px;
+	opacity:1;
+	font-family:宋体,微软雅黑;
+}
+body {
+	margin: 0;
+	border: 0;
+	overflow: hidden;
+}
+#chartContainer
+{
+    text-align: center; 
+    padding-top: 10px;
+}
+
+#ChartDiv1 {
+	margin:0 auto; 
+	padding:0px; 
+	width:80%;
+    height: 500px;
+    border: 1px solid #dddddd;
+    background: #eeeeee;
+    display: inline-block;
+}
+#detailsChart {
+	width:400px;height:300px;padding:0px;display:inline-block;
+}
+.settingsui{	
+	margin:0 auto;
+	width:80%;
+}
+.settingsui>ul {
+	list-style: none;
+}
+
+.settingsui>ul>li {
+	float: left;
+	width: auto;
+	display: inline-block;
+	padding: 5px 10px;
+	margin: 10px;
+	border: 1px solid #ddd;
+	border-radius: 5px;
+}
+
+.settingsui label {
+	line-height: 20px;
+}

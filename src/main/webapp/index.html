@@ -1,0 +1,76 @@
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>宏观经济指标库</title>
+<link href="./css/main.css" type="text/css" rel="stylesheet" />
+<link href="./css/gdropdown.css" type="text/css" rel="stylesheet" />
+<script type="text/javascript" src="./js/gdropdown.js"></script>
+<script type="text/javascript" src="./js/options-ui.js"></script>
+<script type="text/javascript" src="./js/city_location.js"></script>
+<script type="text/javascript" src="./js/city_data.js"></script>
+<script type="text/javascript" src="./js/utilities.js"></script>
+<script type="text/javascript" src="./js/main.js"></script>
+<script type="text/javascript" src="./js/infobubble.js"></script>
+<script type="text/javascript">
+	//var geocoder;
+	function initialize() {
+		//geocoder = new google.maps.Geocoder();
+		//地图选项
+		var mapOptions ={
+			center : new google.maps.LatLng(32.694866, 105.996094),
+			zoom : 5,
+			//mapTypeControl : false,
+			mapTypeId : google.maps.MapTypeId.ROADMAP,
+			streetViewControl : false
+		};
+		map = new google.maps.Map(document.getElementById("map_canvas"), mapOptions);
+		createToolbar();
+		// 省
+		for ( var i = 0, n = provinces.length; i < n; i++) {
+			var entity = createProvincePolygon(provinces[i],provinces[i].b);
+			if(!!entity){
+				allProvinces[provinces[i].n] = entity;
+				allEntities.push(entity);
+			}
+		}
+		// 市
+		for (i = 0, n = cityDatas.length; i < n; i++) {
+			var entity = createCityCircle(cityDatas[i]);
+			if(!!entity){
+				allCities[cityDatas[i]["NAME"]] = entity;
+				allEntities.push(entity);
+			}
+		}
+		
+		infoBubble = new InfoBubble(UIOptions.infoBubbleOptions);
+		google.maps.event.addListener(map, 'zoom_changed', function() {
+			updateCityRadius();
+			var zoom = map.getZoom();
+			if(prezoom <10 && zoom >= 10){
+				showShenzhenDistricts();
+			}else if(prezoom>=10 && zoom < 10){
+				hideShenzhenDistricts();
+			}
+			prezoom = zoom;
+		});
+		
+	}
+	
+	function loadScript() {
+		var script = document.createElement("script");
+		script.type = "text/javascript";
+		//由于众所周知的原因，谷歌的域名在墙内会偶尔抽风，所以你可能会需要更换域名maps.googleapis.com，ditu.google.cn
+		script.src = "https://ditu.google.cn/maps/api/js?v=3.14&key=AIzaSyAazjHZtSZLAT_H_AIN9vLWUy48wenxBwA&sensor=false&language=zh-CN&callback=initialize";
+		document.body.appendChild(script);
+	}
+
+	window.onload = loadScript;
+</script>
+</head>
+
+<body>
+	<div id="map_canvas"></div>
+</body>
+
+</html>

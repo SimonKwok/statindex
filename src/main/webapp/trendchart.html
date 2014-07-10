@@ -1,0 +1,195 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./css/chart.css" />
+<link rel="stylesheet" type="text/css" href="./css/themes/cupertino/jquery-ui.min.css"/>
+<script type="text/javascript" src="./js/utilities.js"></script>
+<script type="text/javascript" src="./js/chart.js"></script>
+<script type="text/javascript" src="./js/jquery-1.7.2.js"></script>
+<script type="text/javascript" src="./js/city_data.js"></script>
+<script type="text/javascript" src="./jchartfx.7.1.5044/js/jchartfx.system.js"></script>
+<script type="text/javascript" src="./jchartfx.7.1.5044/js/jchartfx.coreVector.js"></script>   
+<script type="text/javascript" src="./jchartfx.7.1.5044/js/jchartfx.coreVector3d.js"></script>	
+<script type="text/javascript" src="./jchartfx.7.1.5044/js/jchartfx.advanced.js"></script>	
+<title>趋势图</title>
+<script type="text/javascript">
+var name = decodeURI(QueryString.n);
+var data = getByProp(cityDatas,"NAME",name);
+var index = indexes[QueryString.i];
+var yname = index["PHASENAME"];
+var phases = index["PHASES"];
+
+var units,selectedIndexes,chart1;
+
+function init() {
+	createIdxSelect();
+	refreshPage();
+}
+
+function createIdxSelect(){
+	for (i = 0, n = indexes.length; i < n; i++) {
+    	var idx = indexes[i];
+    	if(idx["PHASENAME"]!=yname)continue;
+    	var div = document.createElement('div');
+    	div.style.display = "inline-block";
+    	var input = document.createElement('input');
+    	input.id = input.name = "input-"+i;
+    	input.type = "checkbox";
+    	input.value = i;
+    	input.title = idx["NAME"];
+    	if(index == idx){
+    		input.checked = "checked";
+    	}
+    	var label = document.createElement('label');
+    	label.innerHTML = idx["NAME"];
+    	label.htmlFor  = input.id;
+    	label.style.padding = "5px";
+    	
+    	div.appendChild(input);
+    	div.appendChild(label);
+    	document.getElementById("idxSelect").appendChild(div);
+    }
+	$('#idxSelect').on('change', 'input[type=checkbox]', refreshPage);
+}
+
+function refreshPage(){
+	collectSelectedIndex();
+	rebuildTitle();
+	rebuildChart();
+}
+
+function collectSelectedIndex(){
+	selectedIndexes = [];
+	units = [];
+	phases = [];
+	$("#idxSelect").find("input[type=checkbox]").each(function(i, e) {
+        var $that = $(this);
+        if ($that.attr("checked")) {
+        	var idx = indexes[$that.val()];
+        	selectedIndexes.push(idx);
+        	var unit = idx["UNIT"];
+        	if(units.indexOf(unit)==-1)units.push(unit);
+        	for (i = 0, n = idx["PHASES"].length; i < n; i++) {
+        		var phase = idx["PHASES"][i];
+        		if(phases.indexOf(phase)==-1)phases.push(phase);
+        	}
+        }
+    });
+	phases.sort();
+}
+
+function rebuildTitle(){
+	if(selectedIndexes && selectedIndexes.length>0 ){
+		document.title = name + selectedIndexes[0]["NAME"] +"趋势图";
+	}else{
+		document.title = "趋势图-"+name;
+	}
+}
+
+function rebuildChart(){
+	document.getElementById('chartContainer').innerHTML = "<div id='ChartDiv1'></div>";
+	chart1 = new cfx.Chart();
+	chart1.setGallery(getGallery());
+    chart1.getLegendBox().setVisible(selectedIndexes.length>1);
+    doTitle(chart1,document.title);
+    chart1.setDataSource(createDataSource());
+    //Axises
+    var axises = [];
+    for (i = 0, n = units.length; i < n; i++) {
+    	var unit = units[i];
+    	var axis;
+    	if(i==0){
+    		axis = chart1.getAxisY();
+    	}else {
+    		if(i==1){
+        		axis = chart1.getAxisY2();
+        	}else{
+	    		axis = new cfx.AxisY();
+	    		axis.setPosition(cfx.AxisPosition.Far);
+	    		chart1.getAxesY().add(axis);
+        	}
+    		axis.setVisible(true);
+    		axis.getGrids().getMajor().setVisible(false);
+    	}
+    	settingAxis(axis,unit);
+    	axises.push(axis);
+    }
+    
+    for(j=0;j<selectedIndexes.length;j++){
+    	var index = selectedIndexes[j];
+		var indexname = index["NAME"];
+		var unit = index["UNIT"];
+		chart1.getSeries().getItem(j).setAxisY(axises[units.indexOf(unit)]);
+    }
+	
+    chart1.create(document.getElementById('ChartDiv1'));
+}
+
+
+
+function createDataSource(){
+	var items = new Array();
+	if(!!data){
+		var val = 0;
+		for (i = 0, n = phases.length; i < n; i++) {
+			var phase = phases[i];
+			var item = new Object();
+			for(j=0;j<selectedIndexes.length;j++){
+				var index = selectedIndexes[j];
+				var indexname = index["NAME"];
+				var unit = index["UNIT"];
+				item[indexname] = getDataValue(data,index,phase) || 0;
+				val += item[indexname];
+				if(unit=='%'){
+					item[indexname] = item[indexname] / 100.0;
+				}
+			}
+			if(val==0)continue;
+			item[yname] = phase + yname;
+			items.push(item);
+		}
+	}
+	return items;
+}
+
+function getGallery(){
+	switch ($("#cmbGallery").val()) {
+	case '0':
+		return cfx.Gallery.Lines;
+	case '1':
+		return cfx.Gallery.Bar;
+	case '2':
+		return cfx.Gallery.Curve;
+	case '3':
+		return cfx.Gallery.Scatter;
+	case '4':
+		return cfx.Gallery.Step;
+	}
+}
+</script>
+</head>
+<body onload="init()">
+	<div id="chartContainer">
+		<div id="ChartDiv1"></div>
+	</div>
+	<div class="settingsui">
+		<ul>
+			<li>
+				<form id="idxSelect"><label>指标:</label></form>
+			</li>
+		</ul>
+	</div>
+	<div class="settingsui">
+		<ul>
+			<li><label>图表: <select id="cmbGallery" onchange="javascript:chart1.setGallery(getGallery());">
+						<option value="0" selected>折线图</option>
+						<option value="1">柱状图</option>
+						<option value="2">曲线图</option>
+						<option value="3">散点图</option>
+				</select>
+			</label></li>
+		</ul>
+	</div>
+</body>
+</html>
